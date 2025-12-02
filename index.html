@@ -141,8 +141,9 @@
       color: #243b6b;
     }
   </style>
+  <script src="API.js"></script>
   <script>
-    // Minimal SCORM 1.2 helper
+    // SCORM 1.2 helper - tries parent first, falls back to local API
     var API = null;
     var scormInitialized = false;
 
@@ -150,18 +151,33 @@
       var nFindAPITries = 0;
       while ((win.API == null) && (nFindAPITries < 7)) {
         nFindAPITries++;
-        if (win.parent != null && win.parent != win) {
-          win = win.parent;
-        } else {
+        try {
+          if (win.parent != null && win.parent != win && win.parent.API) {
+            // Check if we can access parent (same origin)
+            win = win.parent;
+            if (win.API) {
+              return win.API;
+            }
+          } else {
+            break;
+          }
+        } catch(e) {
+          // Cross-origin error - can't access parent
           break;
         }
       }
-      return win.API;
+      return null;
     }
 
     function getAPIHandle() {
       if (API == null) {
+        // Try to find API in parent window (for LMS)
         API = findAPI(window);
+        
+        // If not found (cross-origin or no LMS), use local API
+        if (API == null && window.API) {
+          API = window.API;
+        }
       }
       return API;
     }
